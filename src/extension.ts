@@ -1,26 +1,77 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
-import * as vscode from 'vscode';
+import * as net from "net";
+import * as vscode from "vscode";
+
+let server: net.Server | null = null;
+
+function startTcpServer(): number {
+  const port = 57142;
+  server = net.createServer((socket) => {
+    console.log("🛡️ Client connected");
+
+    socket.on("data", (data) => {
+      console.log("🛡️ Received:", data.toString().trim());
+      socket.write("hello from TCP server\n");
+    });
+
+    socket.on("end", () => {
+      console.log("🛡️ Client disconnected");
+    });
+  });
+
+  server.listen(port, "localhost", () => {
+    console.log(`🛡️ TCP server listening on port ${port}`);
+  });
+
+  return port;
+}
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
+  console.log("🛡️ Guardrail extension activated!");
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "guardrail" is now active!');
+  const port = startTcpServer();
+  console.log(`🛡️ TCP server started on port ${port}`);
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	const disposable = vscode.commands.registerCommand('guardrail.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from guardrail!');
-	});
+  const config = vscode.workspace.getConfiguration();
 
-	context.subscriptions.push(disposable);
+  const platform =
+    process.platform === "darwin"
+      ? "osx"
+      : process.platform === "win32"
+      ? "windows"
+      : "linux";
+
+  const existingEnv = config.get(`terminal.integrated.env.${platform}`, {});
+
+  const newEnv = {
+    ...existingEnv,
+    GUARDRAIL_PORT: port.toString(),
+  };
+
+  config.update(
+    `terminal.integrated.env.${platform}`,
+    newEnv,
+    vscode.ConfigurationTarget.Workspace
+  );
+
+  console.log("🛡️ Environment variables configured for new terminals");
+
+  context.subscriptions.push({
+    dispose: () => {
+      if (server) {
+        console.log("🛡️ Shutting down TCP server");
+        server.close();
+      }
+    },
+  });
 }
 
 // This method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() {
+  if (server) {
+    server.close();
+  }
+}
