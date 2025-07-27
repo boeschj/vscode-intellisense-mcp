@@ -11,8 +11,18 @@ function startTcpServer(): number {
     console.log("🛡️ Client connected");
 
     socket.on("data", (data) => {
-      console.log("🛡️ Received:", data.toString().trim());
-      socket.write("hello from TCP server\n");
+      const payload = data.toString().trim();
+      console.log("🛡️ Raw data received:", payload);
+      
+      try {
+        const jsonPayload = JSON.parse(payload);
+        console.log("🛡️ Hook payload received:");
+        console.log(JSON.stringify(jsonPayload, null, 2));
+      } catch (error) {
+        console.log("🛡️ Data is not JSON, treating as plain text");
+      }
+      
+      socket.write("received\n");
     });
 
     socket.on("end", () => {

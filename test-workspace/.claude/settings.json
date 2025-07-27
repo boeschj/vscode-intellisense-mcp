@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo test | nc localhost $GUARDRAIL_PORT"
+            "command": "cat | nc localhost $GUARDRAIL_PORT"
           }
         ]
       }
